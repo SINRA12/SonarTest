@@ -12,7 +12,6 @@ public class Main {
     }
 
     public  static int multiply(int a, int b) {
-        int x= 5;
         return a*b;
     }
 }
