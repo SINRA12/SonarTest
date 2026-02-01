@@ -1,3 +1,6 @@
+properties([
+    githubProjectProperty(projectUrlStr: 'https://github.com/SINRA12/SonarTest/')
+])
 pipeline {
     agent any
     tools {
