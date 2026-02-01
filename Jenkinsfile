@@ -19,7 +19,7 @@ pipeline {
         stage('Build & Sonar') {
             steps {
                 withSonarQubeEnv('MySonarServer') {
-                    sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=SonarTest -Dsonar.token=$SONAR_AUTH_TOKEN'
+                    sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=SonarTest -Dsonar.token=squ_588fe030cc25367ea49bedd8778ef86043a0d98f'
                 }
             }
         }
