@@ -2,41 +2,63 @@ pipeline {
     agent any
     
     tools {
-        maven 'M3'     // Must match your Global Tool Configuration name
-        jdk 'jdk17'    // Must match your Global Tool Configuration name
+        maven 'M3'
+        //jdk 'jdk17'
     }
 
     stages {
-        stage('Clone') {
-            steps { 
-                // Fix 1: status -> state
-                setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'PENDING', message: 'Analysis in progress...')
-                checkout scm 
-            }
-        }
-        stage('Build & Sonar Analysis') {
+        stage('Status Start') {
             steps {
-                withSonarQubeEnv('MySonarServer') { 
-                    sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=SonarTest -Dsonar.token=$SONAR_AUTH_TOKEN'
+                script {
+                    // Manually set GitHub status to PENDING at the start
+                    step([
+                        $class: "GitHubCommitStatusSetter",
+                        reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/SINRA12/SonarTest"],
+                        contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "SonarQube Quality Gate"],
+                        statusResultSource: [
+                            $class: "ConditionalStatusResultSource",
+                            results: [[$class: "AnyBuildResult", message: "Analysis in progress...", state: "PENDING"]]
+                        ]
+                    ])
                 }
             }
         }
+
+        stage('Build & Sonar') {
+            steps {
+                withSonarQubeEnv('MySonarServer') {
+                    // Use your specific token here
+                    sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=SonarTest -Dsonar.token=squ_588fe030cc25367ea49bedd8778ef86043a0d98f'
+                }
+            }
+        }
+
         stage("Quality Gate") {
             steps {
+                // Wait for the webhook from SonarQube
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
     }
+
     post {
-        success {
-            // Fix 2: status -> state, description -> message
-            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'SUCCESS', message: 'Quality Gate Passed!')
-        }
-        failure {
-            // Fix 3: status -> state, description -> message
-            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'FAILURE', message: 'Quality Gate Failed or Build Error')
+        always {
+            script {
+                // Capture current build result for the final status
+                def resultState = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
+                
+                step([
+                    $class: "GitHubCommitStatusSetter",
+                    reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/SINRA12/SonarTest"],
+                    contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "SonarQube Quality Gate"],
+                    statusResultSource: [
+                        $class: "ConditionalStatusResultSource",
+                        results: [[$class: "AnyBuildResult", message: "Build ${resultState}", state: resultState]]
+                    ]
+                ])
+            }
         }
     }
 }
