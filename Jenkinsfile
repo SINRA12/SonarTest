@@ -2,16 +2,15 @@ pipeline {
     agent any
     
     tools {
-        // This must match the Name you gave in Global Tool Configuration
-        maven 'M3' 
-        jdk 'jdk17' // If you configured a JDK tool similarly
+        maven 'M3'     // Must match your Global Tool Configuration name
+        jdk 'jdk17'    // Must match your Global Tool Configuration name
     }
-    
+
     stages {
         stage('Clone') {
             steps { 
-                // This tells GitHub the build has started
-                setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', status: 'PENDING')
+                // Fix 1: status -> state
+                setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'PENDING', message: 'Analysis in progress...')
                 checkout scm 
             }
         }
@@ -32,10 +31,12 @@ pipeline {
     }
     post {
         success {
-            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', status: 'SUCCESS', description: 'Passed!')
+            // Fix 2: status -> state, description -> message
+            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'SUCCESS', message: 'Quality Gate Passed!')
         }
         failure {
-            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', status: 'FAILURE', description: 'Failed or Quality Gate broke.')
+            // Fix 3: status -> state, description -> message
+            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'FAILURE', message: 'Quality Gate Failed or Build Error')
         }
     }
 }
