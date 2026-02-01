@@ -5,14 +5,13 @@ properties([
 pipeline {
     agent any
     tools { maven 'M3' }
-
-    stage('Debug Env') {
+    stages {
+         stage('Debug Env') {
     steps {
         sh 'printenv | sort' // For Linux/Docker
         // OR use: echo "CHANGE_ID is: ${env.CHANGE_ID}"
       }
-    }
-    stages {
+    }   
         stage('Status Start') {
             steps {
                 script {
