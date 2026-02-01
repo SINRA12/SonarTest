@@ -1,24 +1,41 @@
 pipeline {
     agent any
+    
+    tools {
+        // This must match the Name you gave in Global Tool Configuration
+        maven 'M3' 
+        jdk 'jdk17' // If you configured a JDK tool similarly
+    }
+    
     stages {
         stage('Clone') {
-            steps { checkout scm }
+            steps { 
+                // This tells GitHub the build has started
+                githubNotify(context: 'SonarQube Quality Gate', status: 'PENDING')
+                checkout scm 
+            }
         }
         stage('Build & Sonar Analysis') {
             steps {
                 withSonarQubeEnv('MySonarServer') { 
-                    // This runs the maven command we practiced
                     sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=SonarTest'
                 }
             }
         }
         stage("Quality Gate") {
             steps {
-                // Jenkins waits here for the Webhook from SonarQube
                 timeout(time: 5, unit: 'MINUTES') {
                     waitForQualityGate abortPipeline: true
                 }
             }
+        }
+    }
+    post {
+        success {
+            githubNotify(context: 'SonarQube Quality Gate', status: 'SUCCESS', description: 'Passed!')
+        }
+        failure {
+            githubNotify(context: 'SonarQube Quality Gate', status: 'FAILURE', description: 'Failed or Quality Gate broke.')
         }
     }
 }
