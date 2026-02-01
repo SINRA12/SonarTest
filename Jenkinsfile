@@ -1,22 +1,24 @@
 pipeline {
     agent any
-    
     tools {
-        maven 'M3'     // Must match your Global Tool Configuration name
-        jdk 'jdk17'    // Must match your Global Tool Configuration name
+        maven 'M3'
+        jdk 'jdk17'
     }
-
     stages {
-        stage('Clone') {
-            steps { 
-                // Fix 1: status -> state
-                setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'PENDING', message: 'Analysis in progress...')
-                checkout scm 
+        stage('Status Start') {
+            steps {
+                script {
+                    try {
+                        setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'PENDING', message: 'Building...')
+                    } catch (Exception e) {
+                        echo "Could not update GitHub status: ${e.message}"
+                    }
+                }
             }
         }
-        stage('Build & Sonar Analysis') {
+        stage('Build & Sonar') {
             steps {
-                withSonarQubeEnv('MySonarServer') { 
+                withSonarQubeEnv('MySonarServer') {
                     sh 'mvn clean verify sonar:sonar -Dsonar.projectKey=SonarTest'
                 }
             }
@@ -30,13 +32,15 @@ pipeline {
         }
     }
     post {
-        success {
-            // Fix 2: status -> state, description -> message
-            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'SUCCESS', message: 'Quality Gate Passed!')
-        }
-        failure {
-            // Fix 3: status -> state, description -> message
-            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: 'FAILURE', message: 'Quality Gate Failed or Build Error')
+        always {
+            script {
+                try {
+                    def resultState = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
+                    setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', state: resultState, message: "Build ${resultState}")
+                } catch (Exception e) {
+                    echo "Final status update failed: ${e.message}"
+                }
+            }
         }
     }
 }
