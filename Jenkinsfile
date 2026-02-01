@@ -11,7 +11,7 @@ pipeline {
         stage('Clone') {
             steps { 
                 // This tells GitHub the build has started
-                githubNotify(context: 'SonarQube Quality Gate', status: 'PENDING')
+                setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', status: 'PENDING')
                 checkout scm 
             }
         }
@@ -32,10 +32,10 @@ pipeline {
     }
     post {
         success {
-            githubNotify(context: 'SonarQube Quality Gate', status: 'SUCCESS', description: 'Passed!')
+            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', status: 'SUCCESS', description: 'Passed!')
         }
         failure {
-            githubNotify(context: 'SonarQube Quality Gate', status: 'FAILURE', description: 'Failed or Quality Gate broke.')
+            setGitHubPullRequestStatus(context: 'SonarQube Quality Gate', status: 'FAILURE', description: 'Failed or Quality Gate broke.')
         }
     }
 }
